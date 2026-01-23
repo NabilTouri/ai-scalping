@@ -25,8 +25,8 @@ class Config:
     TIMEFRAME = "15Min"               # Data granularity for AI analysis
     STRATEGY_UPDATE_INTERVAL = 30 * 60 # Seconds (30 minutes)
     
-    # Asset Universe (Liquid Crypto)
-    TRADING_UNIVERSE = ["BTC/USD", "ETH/USD", "SOL/USD", "AVAX/USD", "LINK/USD"]
+    # Asset Universe (Crypto available on Alpaca)
+    TRADING_UNIVERSE = ["BTC/USD", "ETH/USD", "SOL/USD"]
 
     # Database
     DATABASE_URL = "sqlite:///trading_bot.db"
