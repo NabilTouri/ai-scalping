@@ -1,4 +1,5 @@
 import json
+import re
 
 SYSTEM_PROMPT = """
 You are an expert AI Crypto Scalping Trading Bot. Your goal is to analyze market data and generate profitable trading signals.
@@ -10,7 +11,9 @@ You will receive:
 3. Recent News/Sentiment (optional context).
 
 You must analyze the trend, volume, and volatility.
-You must output your decision in strict JSON format.
+
+CRITICAL: You MUST output ONLY a valid JSON object. No explanations, no preamble, no markdown.
+Start your response directly with { and end with }. Any text outside the JSON will cause a system failure.
 
 Response Format:
 {
@@ -31,6 +34,7 @@ Rules:
 - If "action" is "SELL", ensure TP < Entry < SL.
 - Be decisive but risk-averse. Do not trade if confidence is low (< 0.6).
 - Adhere to the provided risk limits.
+- ONLY output BUY signals (no SELL/short positions) unless you already hold the asset.
 """
 
 def parse_ai_response(response_text: str) -> dict:
@@ -38,8 +42,20 @@ def parse_ai_response(response_text: str) -> dict:
     try:
         # Strip markdown code blocks if present
         text = response_text.replace("```json", "").replace("```", "").strip()
-        data = json.loads(text)
-        return data
+        
+        # Try direct JSON parse first
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        
+        # Find JSON object in the text using regex
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group())
+        
+        raise json.JSONDecodeError("No JSON found", text, 0)
+        
     except json.JSONDecodeError:
         print(f"Error parsing AI response: {response_text}")
         return {
@@ -48,3 +64,4 @@ def parse_ai_response(response_text: str) -> dict:
             "action": "HOLD",
             "reasoning": "Failed to parse AI response."
         }
+

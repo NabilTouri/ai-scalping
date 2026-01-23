@@ -107,6 +107,9 @@ class ExecutionEngine:
             
         except Exception as e:
             self.log(f"Order Failed: {e}", "ERROR")
+            # Deactivate signal to prevent infinite retry loop
+            signal.is_active = False
+            self.db.commit()
 
     def _manage_open_trade(self, trade, current_price, signal):
         # Check Stop Loss
