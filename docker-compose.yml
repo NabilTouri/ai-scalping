@@ -1,0 +1,15 @@
+services:
+  trading-bot:
+    build: .
+    container_name: ai-scalping-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./trading_bot.db:/app/trading_bot.db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
