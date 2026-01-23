@@ -40,14 +40,10 @@ class Config:
     @classmethod
     def validate(cls):
         """Checks if essential config is present."""
-        if not cls.ALPACA_KEY_GEMINI or not cls.ALPACA_SECRET_GEMINI:
-            raise ValueError("Alpaca API credentials for GEMINI (Account 1) missing in .env")
         if not cls.ALPACA_KEY_CLAUDE or not cls.ALPACA_SECRET_CLAUDE:
-            raise ValueError("Alpaca API credentials for CLAUDE (Account 2) missing in .env")
-        if not cls.GEMINI_API_KEY:
-            raise ValueError("Gemini API Key missing in .env")
+            raise ValueError("Alpaca API credentials for CLAUDE missing in .env")
         if not cls.ANTHROPIC_API_KEY:
-            print("Warning: Anthropic API Key missing. Claude agent will not work.")
+            raise ValueError("Anthropic API Key missing in .env")
 
 # Validation check on import
 try:

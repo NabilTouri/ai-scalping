@@ -1,0 +1,21 @@
+# AI Scalping Bot Dependencies
+# Python 3.10+ required
+
+# Alpaca Trading API
+alpaca-py>=0.21.0
+
+# AI Agent - Claude
+anthropic>=0.40.0
+
+# Data Processing
+pandas>=2.0.0
+pytz>=2024.1
+
+# Database
+sqlalchemy>=2.0.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Async Support (for Jupyter/notebooks)
+nest_asyncio>=1.6.0

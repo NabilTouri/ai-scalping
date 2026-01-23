@@ -5,7 +5,6 @@ from src.config import Config
 from src.database import SessionLocal, init_db, StrategicSignal
 from src.market_data import MarketDataManager
 from src.execution_engine import ExecutionEngine
-from src.ai_agents.gemini_agent import GeminiAgent
 from src.ai_agents.claude_agent import ClaudeAgent
 
 def strategy_loop(market, SessionFactory):
@@ -15,9 +14,6 @@ def strategy_loop(market, SessionFactory):
     2. Asks Claude for analysis.
     3. Updates 'StrategicSignal' table.
     """
-    # DISABLED: Gemini due to Free Tier rate limits
-    # gemini = GeminiAgent()
-    
     claude = None
     if Config.ANTHROPIC_API_KEY:
         claude = ClaudeAgent()
@@ -25,7 +21,7 @@ def strategy_loop(market, SessionFactory):
         print("ERROR: No Claude API key found!")
         return
     
-    print(">>> Strategy Loop Started (Claude Only Mode)")
+    print(">>> Strategy Loop Started")
 
     while True:
         try:
@@ -38,17 +34,12 @@ def strategy_loop(market, SessionFactory):
                 # Fetch Data
                 df = market.get_historical_data(symbol, timeframe_str=Config.TIMEFRAME)
                 
-                # DISABLED: Gemini
-                # print(f"Querying Gemini for {symbol}...")
-                # g_decision = gemini.analyze(symbol, df)
-                # save_signal(db_session, "GEMINI", symbol, g_decision)
-                
-                # Ask Claude
+                # Ask Claude for analysis
                 print(f"Querying Claude for {symbol}...")
                 c_decision = claude.analyze(symbol, df)
                 save_signal(db_session, "CLAUDE", symbol, c_decision)
                 
-                # Respect Rate Limits (Free Tier Gemini allows ~15 req/min, but safe to slow down)
+                # Respect API rate limits
                 time.sleep(5)
             
             db_session.close() # Close session after cycle

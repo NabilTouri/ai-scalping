@@ -9,7 +9,7 @@ class Trade(Base):
     __tablename__ = 'trades'
     
     id = Column(Integer, primary_key=True)
-    agent_name = Column(String, nullable=False)  # 'GEMINI' or 'CLAUDE'
+    agent_name = Column(String, nullable=False)  # Agent identifier (e.g., 'CLAUDE')
     symbol = Column(String, nullable=False)
     side = Column(String, nullable=False)  # 'buy' or 'sell'
     qty = Column(Float, nullable=False)

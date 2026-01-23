@@ -1,45 +1,91 @@
-# AI Scalping Bot (Gemini vs Claude)
+# AI Scalping Bot (Claude)
 
-This project runs two AI agents (Gemini and Claude) that compete to trade crypto on a paper trading account.
+An AI-powered crypto scalping bot that uses Claude to analyze market data and execute paper trades on Alpaca.
 
 ## Prerequisites
 - Python 3.10+
 - Alpaca Paper Trading Account
-- Google Gemini API Key
 - Anthropic Claude API Key
 
 ## Setup
-1. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-   *(Note: manual install was done: `pip install alpaca-py google-generativeai anthropic pandas sqlalchemy python-dotenv nest_asyncio`)*
 
-2. **Configuration**:
-   Ensure your `.env` file is set up with:
-   - `ALPACA_API_KEY`
-   - `ALPACA_SECRET_KEY`
-   - `GEMINI_API_KEY`
-   - `ANTHROPIC_API_KEY`
+### 1. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Configuration
+Create a `.env` file with your API keys:
+```env
+# Alpaca Paper Trading (for Claude agent)
+ALPACA_API_KEY_CLAUDE=your_alpaca_key
+ALPACA_SECRET_KEY_CLAUDE=your_alpaca_secret
+
+# Claude AI
+ANTHROPIC_API_KEY=your_anthropic_key
+
+# Optional: Paper trading mode (default: True)
+PAPER_TRADING=True
+```
+
+> **Note**: The bot uses separate Alpaca accounts per agent. For Claude-only mode, you need `ALPACA_API_KEY_CLAUDE` and `ALPACA_SECRET_KEY_CLAUDE`.
 
 ## How to Run
-Run the main script to start the bot:
-
 ```bash
 python -m src.main
 ```
 
 ## How it Works
-1. **Strategy Loop (Every 30 mins)**:
-   - Fetches historical data for BTC, ETH, SOL, etc.
-   - Sends data to Gemini and Claude.
-   - Saves their "Signals" to the local SQLite database (`trading_bot.db`).
 
-2. **Execution Loop (Real-time)**:
-   - Monitors the market price.
-   - If a signal matches entry conditions (e.g. Price < Entry Limit), it executes a trade.
-   - Manages Stop Loss and Take Profit automatically.
+### Strategy Loop (Every 30 mins)
+1. Fetches historical OHLCV data for crypto assets (BTC, ETH, SOL, AVAX, LINK)
+2. Sends data to Claude for analysis
+3. Claude returns trading signals with entry/exit prices
+4. Signals are saved to SQLite database (`trading_bot.db`)
+
+### Execution Loop (Every 10 seconds)
+1. Monitors current market prices
+2. If price matches entry conditions → executes trade
+3. Manages Stop Loss and Take Profit automatically
+4. Applies risk management guardrails (max 20% per trade, 5% hard stop loss)
+
+## Trading Universe
+- BTC/USD
+- ETH/USD  
+- SOL/USD
+- AVAX/USD
+- LINK/USD
+
+## Risk Management
+| Parameter | Value |
+|-----------|-------|
+| Max Position Size | 20% of equity |
+| Hard Stop Loss | 5% per trade |
+| Max Daily Loss | 5% of equity |
 
 ## Monitoring
-- Check the console logs for activity.
-- Inspect `trading_bot.db` using a SQLite viewer to see `trades` and `strategic_signals`.
+- **Console logs**: Real-time activity
+- **SQLite Database**: Inspect `trading_bot.db` with any SQLite viewer
+  - `trades` table: All executed trades with PnL
+  - `strategic_signals` table: AI-generated signals
+  - `logs` table: System logs
+
+## Project Structure
+```
+src/
+├── main.py              # Entry point, runs strategy + execution loops
+├── config.py            # Configuration and environment variables
+├── database.py          # SQLAlchemy models and DB init
+├── market_data.py       # Alpaca API wrapper for data + orders
+├── execution_engine.py  # Trade execution and risk management
+└── ai_agents/
+    ├── base_agent.py    # Abstract base class
+    ├── claude_agent.py  # Claude implementation
+    └── prompts.py       # System prompts and response parsing
+```
+
+## Deployment
+For hosting options:
+- **VPS** (DigitalOcean/Vultr): ~$6/month
+- **AWS EC2 Free Tier**: Free for 12 months
+- **Railway.app**: $5/month with easy GitHub deploy
