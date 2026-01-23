@@ -5,17 +5,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # API Keys
-    # Account 1: Gemini Agent
-    ALPACA_KEY_GEMINI = os.getenv("ALPACA_API_KEY_GEMINI")
-    ALPACA_SECRET_GEMINI = os.getenv("ALPACA_SECRET_KEY_GEMINI")
-    
-    # Account 2: Claude Agent
+    # API Keys - Alpaca (for Claude agent)
     ALPACA_KEY_CLAUDE = os.getenv("ALPACA_API_KEY_CLAUDE")
     ALPACA_SECRET_CLAUDE = os.getenv("ALPACA_SECRET_KEY_CLAUDE")
 
-    # AI Keys
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    # AI Keys - Claude
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
     # Trading Settings

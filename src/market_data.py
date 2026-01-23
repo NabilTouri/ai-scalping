@@ -9,15 +9,13 @@ from datetime import datetime, timedelta
 
 class MarketDataManager:
     def __init__(self):
-        # Data client can use either key, data is public/global
-        self.data_client = CryptoHistoricalDataClient(Config.ALPACA_KEY_GEMINI, Config.ALPACA_SECRET_GEMINI)
+        # Data client for market data
+        self.data_client = CryptoHistoricalDataClient(Config.ALPACA_KEY_CLAUDE, Config.ALPACA_SECRET_CLAUDE)
         
-        # Two Execution Clients
-        self.client_gemini = TradingClient(Config.ALPACA_KEY_GEMINI, Config.ALPACA_SECRET_GEMINI, paper=Config.PAPER_TRADING)
+        # Trading client for Claude agent
         self.client_claude = TradingClient(Config.ALPACA_KEY_CLAUDE, Config.ALPACA_SECRET_CLAUDE, paper=Config.PAPER_TRADING)
 
         self.clients = {
-            "GEMINI": self.client_gemini,
             "CLAUDE": self.client_claude
         }
 
