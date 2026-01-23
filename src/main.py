@@ -92,16 +92,37 @@ def execution_loop(execution_engine):
         execution_engine.process_signals()
         time.sleep(10) # 10 seconds check interval
 
+def invalidate_stale_signals():
+    """
+    Deactivate all active signals from previous bot sessions.
+    This prevents executing stale signals that no longer reflect current market conditions.
+    """
+    db = SessionLocal()
+    try:
+        stale_count = db.query(StrategicSignal).filter(StrategicSignal.is_active == True).update({"is_active": False})
+        db.commit()
+        if stale_count > 0:
+            print(f">>> Invalidated {stale_count} stale signal(s) from previous session")
+    except Exception as e:
+        print(f"Error invalidating stale signals: {e}")
+    finally:
+        db.close()
+
 def main():
     print("Starting AI Scalping Bot...")
     
     # Init DB
     init_db()
     
+    # Init market manager first (needed to close positions)
+    market = MarketDataManager()
+    
+    # Clean up from previous session
+    invalidate_stale_signals()
+    
     # Init Components
     # Main thread uses its own session (via ExecutionEngine)
     db_session_execution = SessionLocal() 
-    market = MarketDataManager()
     execution = ExecutionEngine(db_session_execution, market)
     
     # Start Strategy Thread (Daemon) - Pass SessionFactory
