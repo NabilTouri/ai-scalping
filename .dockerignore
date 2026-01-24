@@ -1,0 +1,19 @@
+# Test files - not needed in production
+tests/
+test_*.py
+
+# Development files
+*.pyc
+__pycache__/
+.git/
+.gitignore
+.env.example
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+
+# Local database (will be created fresh)
+*.db
