@@ -16,10 +16,17 @@ class Config:
     PAPER_TRADING = os.getenv("PAPER_TRADING", "True").lower() == "true"
     BASE_URL = "https://paper-api.alpaca.markets" if PAPER_TRADING else "https://api.alpaca.markets"
     
+    # Development Mode - simulates trades without executing
+    DRY_RUN = os.getenv("DRY_RUN", "False").lower() == "true"
+    
+    # Logging
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+    
     # Risk Management Guardrails
     MAX_POSITION_SIZE_PERCENT = 0.20  # Max 20% of equity per trade
     MAX_DAILY_LOSS_PERCENT = 0.05     # Stop trading if equity drops 5% in a day
     HARD_STOP_LOSS_PERCENT = 0.05     # Force close trade if loss > 5%
+    MIN_CONFIDENCE = 0.6              # Skip trade if AI confidence below this
 
     # Strategy Settings
     TIMEFRAME = "15Min"               # Data granularity for AI analysis

@@ -1,24 +1,15 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-from .database import Trade, StrategicSignal, Log
+from .database import Trade, StrategicSignal
 from .market_data import MarketDataManager
 from .config import Config
+from .logger import execution_logger as logger
+
 
 class ExecutionEngine:
     def __init__(self, db_session: Session, market_manager: MarketDataManager):
         self.db = db_session
         self.market = market_manager
-
-    def log(self, message, level="INFO"):
-        """Central logging to DB."""
-        print(f"[{level}] {message}") # Also print to stdout
-        log_entry = Log(
-            level=level,
-            source="EXECUTION_ENGINE",
-            message=message
-        )
-        self.db.add(log_entry)
-        self.db.commit()
 
     def process_signals(self):
         """Checks all active 'StrategicSignals' against current market data."""
@@ -28,14 +19,14 @@ class ExecutionEngine:
             try:
                 self._evaluate_signal(signal)
             except Exception as e:
-                self.log(f"Error evaluating signal {signal.id}: {e}", "ERROR")
+                logger.error(f"Error evaluating signal {signal.id}: {e}")
 
     def _evaluate_signal(self, signal: StrategicSignal):
-        # Skip if confidence is too low (Bug 2 fix)
-        if signal.confidence is not None and signal.confidence < 0.6:
-            return  # Don't trade with low confidence
+        # Skip if confidence is too low
+        if signal.confidence is not None and signal.confidence < Config.MIN_CONFIDENCE:
+            return
         
-        # 1. Check if we already have an open trade for this signal
+        # Check if we already have an open trade for this signal
         existing_trade = self.db.query(Trade).filter(
             Trade.strategy_signal_id == signal.id,
             Trade.status == "OPEN"
@@ -45,13 +36,11 @@ class ExecutionEngine:
         
         # LOGIC: ENTRY
         if not existing_trade:
-            # Bug 4 fix: Check if we already have a position for this symbol
+            # Check if we already have a position for this symbol
             if self.market.has_position(signal.agent_name, signal.target_symbol):
-                # Already have position, don't open another
                 return
             
             if signal.action == "BUY":
-                # Check entry conditions
                 below_max = (current_price <= signal.entry_price_max) if signal.entry_price_max else True
                 above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
 
@@ -59,48 +48,48 @@ class ExecutionEngine:
                     self._execute_entry(signal, current_price, "buy")
             
             elif signal.action == "SELL":
-                # Only sell if we have existing position (no short selling)
-                pass  # Disabled short selling per prompt
+                pass  # Disabled short selling
 
         # LOGIC: EXIT (Stop Loss / Take Profit)
         else:
             self._manage_open_trade(existing_trade, current_price, signal)
 
     def _execute_entry(self, signal, price, side):
-        # Get account info
         account = self.market.get_account(signal.agent_name)
         equity = float(account.equity)
         buying_power = float(account.buying_power)
         
-        # Minimum trade as percentage of equity (5%)
         MIN_TRADE_PERCENT = 0.05
         min_trade_value = equity * MIN_TRADE_PERCENT
         
-        # Check minimum buying power
         if buying_power < min_trade_value:
-            self.log(f"Insufficient buying power: ${buying_power:.2f} < {MIN_TRADE_PERCENT*100}% of equity", "WARNING")
+            logger.warning(f"Insufficient buying power: ${buying_power:.2f} < {MIN_TRADE_PERCENT*100}% of equity")
             signal.is_active = False
             self.db.commit()
             return
         
-        # Risk Management: Calculate Position Size
         trade_amount = equity * Config.MAX_POSITION_SIZE_PERCENT
         
         if trade_amount > buying_power:
-            trade_amount = buying_power * 0.95  # Safety buffer
-        
-        # Ensure minimum trade value
+            trade_amount = buying_power * 0.95
+
         if trade_amount < min_trade_value:
             trade_amount = min_trade_value
 
         qty = trade_amount / price
         
+        # DRY_RUN mode
+        if Config.DRY_RUN:
+            logger.info(f"[DRY RUN] Would execute {side.upper()} {signal.target_symbol} at {price} (Qty: {qty:.4f})")
+            signal.is_active = False
+            self.db.commit()
+            return
+        
         # Send Order to Alpaca
         try:
             order = self.market.submit_order(signal.agent_name, signal.target_symbol, qty, side)
-            self.log(f"Executed {side.upper()} {signal.target_symbol} at {price} (Qty: {qty:.4f})")
+            logger.info(f"Executed {side.upper()} {signal.target_symbol} at {price} (Qty: {qty:.4f})")
             
-            # Record in DB
             new_trade = Trade(
                 agent_name=signal.agent_name,
                 symbol=signal.target_symbol,
@@ -111,19 +100,15 @@ class ExecutionEngine:
                 strategy_signal_id=signal.id
             )
             self.db.add(new_trade)
-            
-            # Bug 1 fix: Deactivate signal immediately after opening trade
             signal.is_active = False
             self.db.commit()
             
         except Exception as e:
-            self.log(f"Order Failed: {e}", "ERROR")
-            # Deactivate signal to prevent infinite retry loop
+            logger.error(f"Order Failed: {e}")
             signal.is_active = False
             self.db.commit()
 
     def _manage_open_trade(self, trade, current_price, signal):
-        # Check Stop Loss
         if signal.stop_loss:
             if trade.side == "buy" and current_price <= signal.stop_loss:
                 self._close_trade(trade, current_price, "Hit Stop Loss")
@@ -132,7 +117,6 @@ class ExecutionEngine:
                 self._close_trade(trade, current_price, "Hit Stop Loss")
                 return
 
-        # Check Take Profit
         if signal.take_profit:
             if trade.side == "buy" and current_price >= signal.take_profit:
                 self._close_trade(trade, current_price, "Hit Take Profit")
@@ -141,31 +125,27 @@ class ExecutionEngine:
                 self._close_trade(trade, current_price, "Hit Take Profit")
                 return
 
-        # Hard Guardrails (Backstop)
         pnl_pct = (current_price - trade.entry_price) / trade.entry_price
         if trade.side == "sell": pnl_pct *= -1
         
         if pnl_pct <= -Config.HARD_STOP_LOSS_PERCENT:
-             self._close_trade(trade, current_price, "Hard Stop Loss Triggered")
+            self._close_trade(trade, current_price, "Hard Stop Loss Triggered")
 
     def _close_trade(self, trade, price, reason):
         alpaca_closed = False
         
         try:
-            # Convert symbol format: "ETH/USD" -> "ETHUSD" for Alpaca
             alpaca_symbol = trade.symbol.replace("/", "")
             self.market.close_position(trade.agent_name, alpaca_symbol)
             alpaca_closed = True
         except Exception as e:
             error_msg = str(e)
-            # If position not found, it's already closed - not an error
             if "Not Found" in error_msg or "404" in error_msg:
-                self.log(f"Position {trade.symbol} already closed on Alpaca", "INFO")
-                alpaca_closed = True  # Consider it closed
+                logger.info(f"Position {trade.symbol} already closed on Alpaca")
+                alpaca_closed = True
             else:
-                self.log(f"Failed to close position on Alpaca: {e}", "ERROR")
+                logger.error(f"Failed to close position on Alpaca: {e}")
         
-        # Always update DB to prevent retry loops
         try:
             pnl = (price - trade.entry_price) * trade.qty
             if trade.side == "sell": pnl *= -1
@@ -177,14 +157,12 @@ class ExecutionEngine:
             
             self.db.commit()
             
-            # Deactivate signal so we don't re-enter immediately
             signal = self.db.get(StrategicSignal, trade.strategy_signal_id)
             if signal:
                 signal.is_active = False
                 self.db.commit()
 
             if alpaca_closed:
-                self.log(f"Closed {trade.symbol} at {price}. PnL: {pnl:.2f}. Reason: {reason}")
+                logger.info(f"Closed {trade.symbol} at {price}. PnL: {pnl:.2f}. Reason: {reason}")
         except Exception as e:
-            self.log(f"Failed to update trade in DB: {e}", "ERROR")
-
+            logger.error(f"Failed to update trade in DB: {e}")
