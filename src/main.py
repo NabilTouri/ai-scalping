@@ -33,10 +33,11 @@ def strategy_loop(market, SessionFactory):
                 strategy_logger.info(f"Analyzing {symbol}")
                 
                 df = market.get_historical_data(symbol, timeframe_str=Config.TIMEFRAME)
+                current_price = market.get_current_price(symbol)
                 
                 strategy_logger.debug(f"Querying Claude for {symbol}")
                 c_decision = claude.analyze(symbol, df)
-                save_signal(db_session, "CLAUDE", symbol, c_decision)
+                save_signal(db_session, "CLAUDE", symbol, c_decision, current_price)
                 
                 time.sleep(5)
             
@@ -49,7 +50,7 @@ def strategy_loop(market, SessionFactory):
         time.sleep(Config.STRATEGY_UPDATE_INTERVAL)
 
 
-def save_signal(session, agent_name, symbol, decision):
+def save_signal(session, agent_name, symbol, decision, current_price=None):
     """Parses decision dict and saves to DB."""
     try:
         session.query(StrategicSignal).filter(
@@ -68,6 +69,7 @@ def save_signal(session, agent_name, symbol, decision):
             entry_price_max=decision.get("entry_price_max"),
             stop_loss=decision.get("stop_loss"),
             take_profit=decision.get("take_profit"),
+            price_at_signal=current_price,  # For accuracy analysis
             reasoning=decision.get("reasoning", ""),
             is_active=True
         )

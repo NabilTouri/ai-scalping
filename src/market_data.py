@@ -74,6 +74,22 @@ class MarketDataManager:
         except Exception:
             return False
 
+    def get_position_side(self, agent_name, symbol):
+        """Returns 'long', 'short', or None based on the current position."""
+        try:
+            normalized = self._normalize_symbol(symbol)
+            positions = self.get_open_positions(agent_name)
+            for p in positions:
+                if p.symbol == normalized:
+                    qty = float(p.qty)
+                    if qty > 0:
+                        return "long"
+                    elif qty < 0:
+                        return "short"
+            return None
+        except Exception:
+            return None
+
     def submit_order(self, agent_name, symbol, qty, side):
         """Submits a market order for a specific agent."""
         # Normalize symbol for Alpaca

@@ -44,6 +44,9 @@ class StrategicSignal(Base):
     stop_loss = Column(Float, nullable=True)
     take_profit = Column(Float, nullable=True)
     
+    # For accuracy analysis
+    price_at_signal = Column(Float, nullable=True)  # Market price when signal was generated
+    
     reasoning = Column(Text)
     
     is_active = Column(Boolean, default=True)

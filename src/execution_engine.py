@@ -33,26 +33,42 @@ class ExecutionEngine:
         ).first()
 
         current_price = self.market.get_current_price(signal.target_symbol)
+        has_position = self.market.has_position(signal.agent_name, signal.target_symbol)
         
-        # LOGIC: ENTRY
+        # LOGIC: ENTRY (no existing trade from this signal)
         if not existing_trade:
-            # Check if we already have a position for this symbol
-            if self.market.has_position(signal.agent_name, signal.target_symbol):
-                return
+            position_side = self.market.get_position_side(signal.agent_name, signal.target_symbol)
+            # position_side: "long", "short", or None
             
             if signal.action == "BUY":
-                below_max = (current_price <= signal.entry_price_max) if signal.entry_price_max else True
-                above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
-
-                if below_max and above_min:
-                    self._execute_entry(signal, current_price, "buy")
+                # If we have a short position, close it first
+                if position_side == "short":
+                    self._close_position_for_symbol(signal, current_price)
+                # If no position, open a long
+                elif position_side is None:
+                    below_max = (current_price <= signal.entry_price_max) if signal.entry_price_max else True
+                    above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
+                    if below_max and above_min:
+                        self._execute_entry(signal, current_price, "buy")
+                # If already long, do nothing
             
             elif signal.action == "SELL":
-                pass  # Disabled short selling
+                # If we have a long position, close it first
+                if position_side == "long":
+                    self._close_position_for_symbol(signal, current_price)
+                # If no position, open a short
+                elif position_side is None:
+                    below_max = (current_price <= signal.entry_price_max) if signal.entry_price_max else True
+                    above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
+                    if below_max and above_min:
+                        self._execute_entry(signal, current_price, "sell")
+                # If already short, do nothing
 
-        # LOGIC: EXIT (Stop Loss / Take Profit)
+        # LOGIC: EXIT (Stop Loss / Take Profit for existing trade)
         else:
             self._manage_open_trade(existing_trade, current_price, signal)
+
+
 
     def _execute_entry(self, signal, price, side):
         account = self.market.get_account(signal.agent_name)
@@ -124,7 +140,31 @@ class ExecutionEngine:
         if pnl_pct <= -Config.HARD_STOP_LOSS_PERCENT:
             self._close_trade(trade, current_price, "Hard Stop Loss Triggered")
 
+    def _close_position_for_symbol(self, signal, current_price):
+        """Close an existing position when Claude says SELL and we have a long position."""
+        # Find the open trade for this symbol
+        open_trade = self.db.query(Trade).filter(
+            Trade.symbol == signal.target_symbol,
+            Trade.status == "OPEN"
+        ).first()
+        
+        if open_trade:
+            self._close_trade(open_trade, current_price, "SELL signal from Claude")
+            signal.is_active = False
+            self.db.commit()
+        else:
+            # No trade in DB but Alpaca has position - close directly
+            try:
+                alpaca_symbol = signal.target_symbol.replace("/", "")
+                self.market.close_position(signal.agent_name, alpaca_symbol)
+                logger.info(f"Closed {signal.target_symbol} at {current_price} (SELL signal)")
+                signal.is_active = False
+                self.db.commit()
+            except Exception as e:
+                logger.error(f"Failed to close position {signal.target_symbol}: {e}")
+
     def _close_trade(self, trade, price, reason):
+
         alpaca_closed = False
         
         try:
