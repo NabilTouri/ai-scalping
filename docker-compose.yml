@@ -9,7 +9,6 @@ services:
       - .env
     volumes:
       - ./data:/app/data
-      - ./trading_bot.db:/app/trading_bot.db
     logging:
       driver: "json-file"
       options:
@@ -29,7 +28,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./trading_bot.db:/app/trading_bot.db:ro
+      - ./data:/app/data:ro
     logging:
       driver: "json-file"
       options:

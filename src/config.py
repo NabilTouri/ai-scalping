@@ -35,8 +35,8 @@ class Config:
     # Asset Universe (Crypto available on Alpaca)
     TRADING_UNIVERSE = ["BTC/USD", "ETH/USD", "SOL/USD"]
 
-    # Database
-    DATABASE_URL = "sqlite:///trading_bot.db"
+    # Database - uses data directory for Docker compatibility
+    DATABASE_URL = "sqlite:///data/trading_bot.db"
 
     @classmethod
     def validate(cls):
