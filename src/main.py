@@ -108,17 +108,95 @@ def invalidate_stale_signals():
     finally:
         db.close()
 
+def sync_positions_with_alpaca(market):
+    """
+    Sync database with real Alpaca positions.
+    Alpaca is the source of truth - DB is just for logging.
+    """
+    from src.database import Trade
+    db = SessionLocal()
+    
+    try:
+        # 1. Get real positions from Alpaca
+        real_positions = {}
+        try:
+            positions = market.get_open_positions("CLAUDE")
+            for p in positions:
+                # Convert ETHUSD/BTCUSD/AVAXUSD back to ETH/USD format for DB consistency
+                raw_symbol = p.symbol
+                if raw_symbol.endswith("USD"):
+                    symbol = raw_symbol[:-3] + "/USD"  # ETHUSD -> ETH/USD, AVAXUSD -> AVAX/USD
+                else:
+                    symbol = raw_symbol
+                real_positions[symbol] = {
+                    "qty": float(p.qty),
+                    "entry_price": float(p.avg_entry_price),
+                    "current_price": float(p.current_price)
+                }
+            print(f">>> Found {len(real_positions)} real position(s) on Alpaca")
+        except Exception as e:
+            print(f"Warning: Could not fetch Alpaca positions: {e}")
+            return
+        
+        # 2. Close DB trades that don't exist on Alpaca anymore
+        open_trades = db.query(Trade).filter(Trade.status == "OPEN").all()
+        closed_count = 0
+        for trade in open_trades:
+            if trade.symbol not in real_positions:
+                # Position no longer exists on Alpaca
+                trade.status = "CLOSED"
+                trade.pnl = 0.0  # Unknown - was closed externally
+                closed_count += 1
+        
+        if closed_count > 0:
+            db.commit()
+            print(f">>> Closed {closed_count} stale trade(s) not found on Alpaca")
+        
+        # 3. Sync DB with Alpaca positions (create or update)
+        for symbol, pos_data in real_positions.items():
+            existing = db.query(Trade).filter(
+                Trade.symbol == symbol,
+                Trade.status == "OPEN"
+            ).first()
+            
+            if existing:
+                # Update existing trade with current Alpaca values
+                existing.qty = pos_data["qty"]
+                existing.entry_price = pos_data["entry_price"]
+                print(f">>> Updated position: {symbol} (qty={pos_data['qty']:.4f}, entry=${pos_data['entry_price']:.2f})")
+            else:
+                # Position exists on Alpaca but not tracked in DB - create new
+                new_trade = Trade(
+                    agent_name="CLAUDE",
+                    symbol=symbol,
+                    side="buy",  # Assume buy since we don't short
+                    qty=pos_data["qty"],
+                    entry_price=pos_data["entry_price"],
+                    status="OPEN",
+                    strategy_signal_id=None  # No signal - pre-existing position
+                )
+                db.add(new_trade)
+                print(f">>> Created position: {symbol} (qty={pos_data['qty']:.4f}, entry=${pos_data['entry_price']:.2f})")
+        
+        db.commit()
+        
+    except Exception as e:
+        print(f"Error syncing positions: {e}")
+    finally:
+        db.close()
+
 def main():
     print("Starting AI Scalping Bot...")
     
     # Init DB
     init_db()
     
-    # Init market manager first (needed to close positions)
+    # Init market manager first (needed for sync)
     market = MarketDataManager()
     
-    # Clean up from previous session
+    # Sync with Alpaca - the source of truth
     invalidate_stale_signals()
+    sync_positions_with_alpaca(market)
     
     # Init Components
     # Main thread uses its own session (via ExecutionEngine)
