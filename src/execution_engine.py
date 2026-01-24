@@ -31,6 +31,10 @@ class ExecutionEngine:
                 self.log(f"Error evaluating signal {signal.id}: {e}", "ERROR")
 
     def _evaluate_signal(self, signal: StrategicSignal):
+        # Skip if confidence is too low (Bug 2 fix)
+        if signal.confidence is not None and signal.confidence < 0.6:
+            return  # Don't trade with low confidence
+        
         # 1. Check if we already have an open trade for this signal
         existing_trade = self.db.query(Trade).filter(
             Trade.strategy_signal_id == signal.id,
@@ -41,10 +45,13 @@ class ExecutionEngine:
         
         # LOGIC: ENTRY
         if not existing_trade:
+            # Bug 4 fix: Check if we already have a position for this symbol
+            if self.market.has_position(signal.agent_name, signal.target_symbol):
+                # Already have position, don't open another
+                return
+            
             if signal.action == "BUY":
                 # Check entry conditions
-                # If entry_price_max is set, price must be below it
-                # If entry_price_min is set, price must be above it
                 below_max = (current_price <= signal.entry_price_max) if signal.entry_price_max else True
                 above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
 
@@ -52,38 +59,39 @@ class ExecutionEngine:
                     self._execute_entry(signal, current_price, "buy")
             
             elif signal.action == "SELL":
-                # For short selling (if supported) or just selling existing holdings
-                # Simplifying to just BUY logic for now unless user asked for Shorting? 
-                # User said "Scalping", usually implies both ways, but Alpaca paper supports shorting.
-                # Let's implement SHORT logic too.
-                
-                # For SHORT entry: Price should be HIGH.
-                # If entry_price_min is set (e.g. support level), maybe we wait for break?
-                # Using simple logic: 
-                # signal.entry_price_min could act as "sell limit" (don't sell below this)
-                above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
-                
-                if above_min:
-                    self._execute_entry(signal, current_price, "sell")
+                # Only sell if we have existing position (no short selling)
+                pass  # Disabled short selling per prompt
 
         # LOGIC: EXIT (Stop Loss / Take Profit)
         else:
             self._manage_open_trade(existing_trade, current_price, signal)
 
     def _execute_entry(self, signal, price, side):
-        # Risk Management: Calculate Position Size
-        # Fixed % of equity for now
-        # Risk Management: Calculate Position Size
-        # Fixed % of equity for now
+        # Get account info
         account = self.market.get_account(signal.agent_name)
         equity = float(account.equity)
         buying_power = float(account.buying_power)
         
-        # Max Risk per trade
+        # Minimum trade as percentage of equity (5%)
+        MIN_TRADE_PERCENT = 0.05
+        min_trade_value = equity * MIN_TRADE_PERCENT
+        
+        # Check minimum buying power
+        if buying_power < min_trade_value:
+            self.log(f"Insufficient buying power: ${buying_power:.2f} < {MIN_TRADE_PERCENT*100}% of equity", "WARNING")
+            signal.is_active = False
+            self.db.commit()
+            return
+        
+        # Risk Management: Calculate Position Size
         trade_amount = equity * Config.MAX_POSITION_SIZE_PERCENT
         
         if trade_amount > buying_power:
-            trade_amount = buying_power * 0.95 # Safety buffer
+            trade_amount = buying_power * 0.95  # Safety buffer
+        
+        # Ensure minimum trade value
+        if trade_amount < min_trade_value:
+            trade_amount = min_trade_value
 
         qty = trade_amount / price
         
@@ -103,6 +111,9 @@ class ExecutionEngine:
                 strategy_signal_id=signal.id
             )
             self.db.add(new_trade)
+            
+            # Bug 1 fix: Deactivate signal immediately after opening trade
+            signal.is_active = False
             self.db.commit()
             
         except Exception as e:
@@ -167,7 +178,7 @@ class ExecutionEngine:
             self.db.commit()
             
             # Deactivate signal so we don't re-enter immediately
-            signal = self.db.query(StrategicSignal).get(trade.strategy_signal_id)
+            signal = self.db.get(StrategicSignal, trade.strategy_signal_id)
             if signal:
                 signal.is_active = False
                 self.db.commit()

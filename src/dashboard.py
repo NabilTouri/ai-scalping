@@ -82,8 +82,8 @@ async def get_positions():
         return {"positions": [], "error": "Market data unavailable"}
     
     try:
-        # Get positions from Alpaca
-        positions = market.trading_client_claude.get_all_positions()
+        # Get positions using public method
+        positions = market.get_open_positions("CLAUDE")
         return {
             "positions": [
                 {
