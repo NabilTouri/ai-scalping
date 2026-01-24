@@ -1,10 +1,26 @@
 #!/bin/bash
 # Deploy script for AI Scalping Bot
-# Run on your VPS: curl -sSL https://raw.githubusercontent.com/NabilTouri/ai-scalping/main/deploy.sh | bash
+# Full install: curl -sSL https://raw.githubusercontent.com/NabilTouri/ai-scalping/main/deploy.sh | bash
+# Quick update: ./deploy.sh update
 
 set -e
 
-echo "🚀 AI Scalping Bot - Deployment Script"
+APP_DIR="/opt/ai-scalping"
+
+# Quick update mode
+if [ "$1" == "update" ]; then
+    echo "� Quick Update Mode"
+    echo "===================="
+    cd $APP_DIR
+    git pull
+    docker compose down
+    docker compose up -d --build
+    echo "✅ Update complete!"
+    docker compose logs -f
+    exit 0
+fi
+
+echo "�🚀 AI Scalping Bot - Deployment Script"
 echo "======================================="
 
 # Check if running as root
@@ -33,7 +49,6 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 # Create app directory
-APP_DIR="/opt/ai-scalping"
 echo "📁 Setting up application in $APP_DIR..."
 mkdir -p $APP_DIR
 cd $APP_DIR
@@ -70,7 +85,8 @@ echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "📊 Useful commands:"
-echo "  View logs:    docker compose logs -f"
-echo "  Stop bot:     docker compose down"
-echo "  Restart:      docker compose restart"
-echo "  Status:       docker compose ps"
+echo "  View logs:     docker compose logs -f"
+echo "  Stop bot:      docker compose down"
+echo "  Restart:       docker compose restart"
+echo "  Quick update:  ./deploy.sh update"
+
