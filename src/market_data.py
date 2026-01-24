@@ -25,17 +25,16 @@ class MarketDataManager:
 
     def get_current_price(self, symbol):
         """Fetches the latest trade price for a symbol."""
-        # Note: For free crypto data, we might need to use bars or latest trade
-        # Using latest bar for simplicity and stability
         request_params = CryptoBarsRequest(
             symbol_or_symbols=[symbol],
             timeframe=TimeFrame.Minute,
-            start=datetime.utcnow() - timedelta(minutes=10)
+            start=datetime.utcnow() - timedelta(minutes=15)
         )
         bars = self.data_client.get_crypto_bars(request_params)
         if not bars.df.empty:
             return bars.df.iloc[-1]['close']
         raise Exception(f"No price data found for {symbol}")
+
 
     def get_historical_data(self, symbol, timeframe_str="15Min", limit=300):
         """Fetches historical OHLCV data for AI analysis."""

@@ -30,7 +30,7 @@ class Config:
     STRATEGY_UPDATE_INTERVAL = 30 * 60 # Seconds (30 minutes)
     
     # Asset Universe (Crypto available on Alpaca)
-    TRADING_UNIVERSE = ["BTC/USD", "ETH/USD", "SOL/USD"]
+    TRADING_UNIVERSE = ["BTC/USD", "ETH/USD"]
 
     # Database - uses data directory for Docker compatibility
     DATABASE_URL = "sqlite:///data/trading_bot.db"

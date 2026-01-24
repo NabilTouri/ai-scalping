@@ -10,6 +10,7 @@ class ExecutionEngine:
     def __init__(self, db_session: Session, market_manager: MarketDataManager):
         self.db = db_session
         self.market = market_manager
+        self._error_counts = {}  # Track consecutive errors per signal
 
     def process_signals(self):
         """Checks all active 'StrategicSignals' against current market data."""
@@ -18,8 +19,15 @@ class ExecutionEngine:
         for signal in active_signals:
             try:
                 self._evaluate_signal(signal)
+                self._error_counts[signal.id] = 0  # Reset on success
             except Exception as e:
-                logger.error(f"Error evaluating signal {signal.id}: {e}")
+                self._error_counts[signal.id] = self._error_counts.get(signal.id, 0) + 1
+                if self._error_counts[signal.id] <= 3:  # Only log first 3 errors
+                    logger.error(f"Error evaluating signal {signal.id}: {e}")
+                if self._error_counts[signal.id] >= 10:  # Disable after 10 errors
+                    logger.warning(f"Disabling signal {signal.id} after repeated errors")
+                    signal.is_active = False
+                    self.db.commit()
 
     def _evaluate_signal(self, signal: StrategicSignal):
         # Skip if confidence is too low
