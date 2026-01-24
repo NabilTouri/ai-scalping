@@ -138,9 +138,24 @@ class ExecutionEngine:
              self._close_trade(trade, current_price, "Hard Stop Loss Triggered")
 
     def _close_trade(self, trade, price, reason):
+        alpaca_closed = False
+        
         try:
-            self.market.close_position(trade.agent_name, trade.symbol) # Close all for symbol for now (simpler)
-            
+            # Convert symbol format: "ETH/USD" -> "ETHUSD" for Alpaca
+            alpaca_symbol = trade.symbol.replace("/", "")
+            self.market.close_position(trade.agent_name, alpaca_symbol)
+            alpaca_closed = True
+        except Exception as e:
+            error_msg = str(e)
+            # If position not found, it's already closed - not an error
+            if "Not Found" in error_msg or "404" in error_msg:
+                self.log(f"Position {trade.symbol} already closed on Alpaca", "INFO")
+                alpaca_closed = True  # Consider it closed
+            else:
+                self.log(f"Failed to close position on Alpaca: {e}", "ERROR")
+        
+        # Always update DB to prevent retry loops
+        try:
             pnl = (price - trade.entry_price) * trade.qty
             if trade.side == "sell": pnl *= -1
             
@@ -157,7 +172,8 @@ class ExecutionEngine:
                 signal.is_active = False
                 self.db.commit()
 
-            self.log(f"Closed {trade.symbol} at {price}. PnL: {pnl:.2f}. Reason: {reason}")
-            
+            if alpaca_closed:
+                self.log(f"Closed {trade.symbol} at {price}. PnL: {pnl:.2f}. Reason: {reason}")
         except Exception as e:
-            self.log(f"Failed to close trade: {e}", "ERROR")
+            self.log(f"Failed to update trade in DB: {e}", "ERROR")
+

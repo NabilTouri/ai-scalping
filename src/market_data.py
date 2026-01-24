@@ -58,10 +58,29 @@ class MarketDataManager:
         """Returns a list of open positions for the specific agent."""
         return self.clients[agent_name].get_all_positions()
 
+    def _normalize_symbol(self, symbol):
+        """Convert symbol format: 'ETH/USD' -> 'ETHUSD' for Alpaca API."""
+        return symbol.replace("/", "")
+
+    def has_position(self, agent_name, symbol):
+        """Check if we have an open position for a symbol."""
+        try:
+            normalized = self._normalize_symbol(symbol)
+            positions = self.get_open_positions(agent_name)
+            for p in positions:
+                if p.symbol == normalized:
+                    return True
+            return False
+        except Exception:
+            return False
+
     def submit_order(self, agent_name, symbol, qty, side):
         """Submits a market order for a specific agent."""
+        # Normalize symbol for Alpaca
+        normalized_symbol = self._normalize_symbol(symbol)
+        
         market_order_data = MarketOrderRequest(
-            symbol=symbol,
+            symbol=normalized_symbol,
             qty=qty,
             side=OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL,
             time_in_force=TimeInForce.GTC
@@ -70,4 +89,7 @@ class MarketDataManager:
 
     def close_position(self, agent_name, symbol):
         """Closes all positions for a symbol for a specific agent."""
-        return self.clients[agent_name].close_position(symbol)
+        # Symbol should already be normalized when passed in
+        normalized = self._normalize_symbol(symbol)
+        return self.clients[agent_name].close_position(normalized)
+

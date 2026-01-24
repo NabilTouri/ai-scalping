@@ -19,3 +19,7 @@ python-dotenv>=1.0.0
 
 # Async Support (for Jupyter/notebooks)
 nest_asyncio>=1.6.0
+
+# Dashboard
+fastapi>=0.109.0
+uvicorn>=0.27.0

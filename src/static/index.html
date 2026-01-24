@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Scalping Bot - Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Scalping Bot</h1>
+            <div class="status-badge" id="status">
+                <span class="pulse"></span>
+                <span>Live</span>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total PnL</div>
+                <div class="stat-value" id="total-pnl">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Open Positions</div>
+                <div class="stat-value" id="open-positions">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value" id="win-rate">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Trades</div>
+                <div class="stat-value" id="total-trades">0</div>
+            </div>
+        </section>
+
+        <!-- Current Positions -->
+        <section class="panel">
+            <h2>📈 Current Positions</h2>
+            <div class="table-container">
+                <table id="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Qty</th>
+                            <th>Entry</th>
+                            <th>Current</th>
+                            <th>PnL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positions-body">
+                        <tr><td colspan="5" class="empty">No open positions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Active Signals -->
+        <section class="panel">
+            <h2>🎯 Recent Signals</h2>
+            <div class="signals-grid" id="signals-container">
+                <div class="empty">Loading signals...</div>
+            </div>
+        </section>
+
+        <!-- Trade History -->
+        <section class="panel">
+            <h2>📜 Trade History</h2>
+            <div class="table-container">
+                <table id="trades-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Qty</th>
+                            <th>Entry</th>
+                            <th>Exit</th>
+                            <th>PnL</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-body">
+                        <tr><td colspan="8" class="empty">Loading trades...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Logs -->
+        <section class="panel">
+            <h2>📋 Recent Logs</h2>
+            <div class="logs-container" id="logs-container">
+                <div class="empty">Loading logs...</div>
+            </div>
+        </section>
+
+        <footer>
+            <span>Last updated: <span id="last-update">-</span></span>
+            <span>Auto-refresh: 30s</span>
+        </footer>
+    </div>
+
+    <script>
+        // Format currency
+        function formatCurrency(value) {
+            const num = parseFloat(value) || 0;
+            const formatted = Math.abs(num).toFixed(2);
+            const prefix = num >= 0 ? '+$' : '-$';
+            return num >= 0 ? `+$${formatted}` : `-$${formatted}`;
+        }
+
+        // Format date
+        function formatDate(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleString('it-IT', { 
+                month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                
+                const pnlEl = document.getElementById('total-pnl');
+                pnlEl.textContent = formatCurrency(data.total_pnl);
+                pnlEl.className = `stat-value ${data.total_pnl >= 0 ? 'positive' : 'negative'}`;
+                
+                document.getElementById('open-positions').textContent = data.open_positions;
+                document.getElementById('win-rate').textContent = `${data.win_rate}%`;
+                document.getElementById('total-trades').textContent = data.total_trades;
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
+        // Load positions
+        async function loadPositions() {
+            try {
+                const res = await fetch('/api/positions');
+                const data = await res.json();
+                const tbody = document.getElementById('positions-body');
+                
+                if (data.positions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty">No open positions</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.positions.map(p => `
+                    <tr>
+                        <td><strong>${p.symbol}</strong></td>
+                        <td>${p.qty.toFixed(4)}</td>
+                        <td>$${p.avg_entry.toFixed(2)}</td>
+                        <td>$${p.current_price.toFixed(2)}</td>
+                        <td class="${p.unrealized_pnl >= 0 ? 'positive' : 'negative'}">
+                            ${formatCurrency(p.unrealized_pnl)} (${p.unrealized_pnl_pct.toFixed(2)}%)
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load positions:', e);
+            }
+        }
+
+        // Load signals
+        async function loadSignals() {
+            try {
+                const res = await fetch('/api/signals?limit=8');
+                const data = await res.json();
+                const container = document.getElementById('signals-container');
+                
+                if (data.signals.length === 0) {
+                    container.innerHTML = '<div class="empty">No signals yet</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.signals.map(s => `
+                    <div class="signal-card ${s.is_active ? 'active' : ''} ${s.action.toLowerCase()}">
+                        <div class="signal-header">
+                            <span class="signal-symbol">${s.symbol}</span>
+                            <span class="signal-action ${s.action.toLowerCase()}">${s.action}</span>
+                        </div>
+                        <div class="signal-meta">
+                            <span class="sentiment ${s.sentiment.toLowerCase()}">${s.sentiment}</span>
+                            <span class="confidence">${(s.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="signal-reasoning">${s.reasoning || '-'}</div>
+                        <div class="signal-time">${formatDate(s.timestamp)}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load signals:', e);
+            }
+        }
+
+        // Load trades
+        async function loadTrades() {
+            try {
+                const res = await fetch('/api/trades?limit=10');
+                const data = await res.json();
+                const tbody = document.getElementById('trades-body');
+                
+                if (data.trades.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="empty">No trades yet</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.trades.map(t => `
+                    <tr>
+                        <td>${formatDate(t.entry_time)}</td>
+                        <td><strong>${t.symbol}</strong></td>
+                        <td class="${t.side}">${t.side.toUpperCase()}</td>
+                        <td>${t.qty}</td>
+                        <td>$${t.entry_price}</td>
+                        <td>${t.exit_price ? '$' + t.exit_price : '-'}</td>
+                        <td class="${(t.pnl || 0) >= 0 ? 'positive' : 'negative'}">
+                            ${t.pnl !== null ? formatCurrency(t.pnl) : '-'}
+                        </td>
+                        <td><span class="status-badge ${t.status.toLowerCase()}">${t.status}</span></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load trades:', e);
+            }
+        }
+
+        // Load logs
+        async function loadLogs() {
+            try {
+                const res = await fetch('/api/logs?limit=20');
+                const data = await res.json();
+                const container = document.getElementById('logs-container');
+                
+                if (data.logs.length === 0) {
+                    container.innerHTML = '<div class="empty">No logs yet</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.logs.map(l => `
+                    <div class="log-entry ${l.level.toLowerCase()}">
+                        <span class="log-time">${formatDate(l.timestamp)}</span>
+                        <span class="log-level">${l.level}</span>
+                        <span class="log-message">${l.message}</span>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load logs:', e);
+            }
+        }
+
+        // Load all data
+        async function loadAll() {
+            await Promise.all([
+                loadStats(),
+                loadPositions(),
+                loadSignals(),
+                loadTrades(),
+                loadLogs()
+            ]);
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('it-IT');
+        }
+
+        // Initial load
+        loadAll();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadAll, 30000);
+    </script>
+</body>
+</html>
