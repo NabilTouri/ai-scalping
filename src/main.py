@@ -179,9 +179,6 @@ def sync_positions_with_alpaca(market):
 def main():
     logger.info("Starting AI Scalping Bot...")
     
-    if Config.DRY_RUN:
-        logger.warning("DRY_RUN mode enabled - trades will be simulated")
-    
     init_db()
     
     market = MarketDataManager()

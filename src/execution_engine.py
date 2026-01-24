@@ -78,13 +78,6 @@ class ExecutionEngine:
 
         qty = trade_amount / price
         
-        # DRY_RUN mode
-        if Config.DRY_RUN:
-            logger.info(f"[DRY RUN] Would execute {side.upper()} {signal.target_symbol} at {price} (Qty: {qty:.4f})")
-            signal.is_active = False
-            self.db.commit()
-            return
-        
         # Send Order to Alpaca
         try:
             order = self.market.submit_order(signal.agent_name, signal.target_symbol, qty, side)

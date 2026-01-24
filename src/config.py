@@ -16,9 +16,6 @@ class Config:
     PAPER_TRADING = os.getenv("PAPER_TRADING", "True").lower() == "true"
     BASE_URL = "https://paper-api.alpaca.markets" if PAPER_TRADING else "https://api.alpaca.markets"
     
-    # Development Mode - simulates trades without executing
-    DRY_RUN = os.getenv("DRY_RUN", "False").lower() == "true"
-    
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     
