@@ -5,18 +5,15 @@ FastAPI application per monitorare il bot in tempo reale
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from sqlalchemy import create_engine, desc
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import desc
 from datetime import datetime, timedelta
 import os
 
-# Database setup - use absolute path for Docker
-DB_PATH = os.environ.get("DATABASE_URL", "sqlite:///trading_bot.db")
-engine = create_engine(DB_PATH)
-SessionLocal = sessionmaker(bind=engine)
+# Import database from shared module (uses same config)
+from .database import SessionLocal, Trade, StrategicSignal, Log, init_db
 
-# Import models
-from .database import Trade, StrategicSignal, Log
+# Initialize database tables on startup
+init_db()
 
 # Alpaca client for live positions
 try:
