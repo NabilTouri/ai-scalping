@@ -20,8 +20,8 @@ Guida completa per deployare il bot su DigitalOcean (o qualsiasi VPS).
 - Account [Alpaca](https://alpaca.markets) con Paper Trading attivo
 - API Key [Anthropic](https://console.anthropic.com) per Claude
 
-**Costo stimato**: ~$7-11/mese
-- VPS: $6/mese (DigitalOcean Basic)
+**Costo stimato**: ~$8-12/mese
+- VPS: $8/mese (DigitalOcean Basic)
 - Claude API: $1-5/mese (dipende dall'uso)
 - Alpaca: Gratis (paper trading)
 
@@ -29,26 +29,22 @@ Guida completa per deployare il bot su DigitalOcean (o qualsiasi VPS).
 
 ## Step 1: Creare SSH Key
 
-La SSH key è come una "chiave digitale" per accedere al server in modo sicuro, senza password.
+La SSH key è una "chiave digitale" per accedere al server in modo sicuro.
 
-### Sul tuo PC (Mac/Linux)
-Apri il **Terminal** e esegui:
-
+### Mac/Linux
 ```bash
 # Controlla se hai già una chiave
 ls ~/.ssh/
 
 # Se NON hai id_ed25519.pub, creala:
 ssh-keygen -t ed25519 -C "tua@email.com"
-# Premi INVIO a tutte le domande (usa i default)
+# Premi INVIO a tutte le domande
 
 # Copia la chiave pubblica
 cat ~/.ssh/id_ed25519.pub
 ```
 
-### Su Windows
-Apri **PowerShell** o **Git Bash**:
-
+### Windows (PowerShell)
 ```powershell
 # Controlla se hai già una chiave
 dir ~/.ssh/
@@ -73,25 +69,25 @@ cat ~/.ssh/id_ed25519.pub
 
 1. Vai su [DigitalOcean](https://cloud.digitalocean.com) → **Create** → **Droplets**
 
-2. **Choose an image**: Ubuntu 24.04 LTS
+2. **Choose image**: Ubuntu 24.04 LTS
 
 3. **Choose Size**: 
-   - **Basic** → **Regular** → **$6/mo** (1 GB RAM, 25 GB SSD)
-   - ✅ Sufficiente per il bot
+   - **Basic** → **Regular** → **$8/mo** (1 GB RAM, 25 GB SSD)
+   - ✅ Sufficiente per bot + dashboard
 
-4. **Choose Region**: Scegli la più vicina a te (es: Frankfurt per EU)
+4. **Choose Region**: Frankfurt (o la più vicina)
 
 5. **Authentication**: 
    - Seleziona **SSH Key**
    - Clicca **New SSH Key**
-   - Incolla la chiave pubblica copiata prima
-   - Dai un nome (es: "MacBook", "PC Casa")
+   - Incolla la chiave pubblica
+   - Dai un nome (es: "PC Casa")
 
-6. **Hostname**: `ai-scalping-bot` (o quello che preferisci)
+6. **Hostname**: `ai-scalping-bot`
 
 7. Clicca **Create Droplet**
 
-8. **Copia l'indirizzo IP** che appare (es: `167.99.123.45`)
+8. **Copia l'indirizzo IP** (es: `167.99.123.45`)
 
 ---
 
@@ -104,9 +100,7 @@ ssh root@<IP_DEL_DROPLET>
 # Esempio: ssh root@167.99.123.45
 ```
 
-Se chiede "Are you sure you want to continue connecting?" → scrivi `yes`
-
-### Deploy automatico (consigliato)
+### Deploy automatico
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/NabilTouri/ai-scalping/main/deploy.sh | bash
@@ -134,14 +128,10 @@ Inserisci le tue chiavi:
 ALPACA_API_KEY_CLAUDE=pk_xxxxxxxxxxxxxxxxxx
 ALPACA_SECRET_KEY_CLAUDE=sk_xxxxxxxxxxxxxxxxxx
 
-# Per il data feed (può essere uguale a Claude)
-ALPACA_API_KEY_GEMINI=pk_xxxxxxxxxxxxxxxxxx
-ALPACA_SECRET_KEY_GEMINI=sk_xxxxxxxxxxxxxxxxxx
-
 # Claude AI
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxx
 
-# Modalità paper trading (IMPORTANTE: lascia True per test!)
+# Modalità paper trading (IMPORTANTE: lascia True!)
 PAPER_TRADING=True
 ```
 
@@ -156,15 +146,23 @@ cd /opt/ai-scalping
 docker compose up -d
 ```
 
-Verifica che sia partito:
+Verifica:
 
 ```bash
 docker compose ps
-# Dovresti vedere: ai-scalping-bot   running
+# Dovresti vedere:
+# - ai-scalping-bot       running
+# - ai-scalping-dashboard running
 
-docker compose logs -f
-# Vedi i log in tempo reale (Ctrl+C per uscire)
+docker compose logs -f trading-bot
+# Log in tempo reale (Ctrl+C per uscire)
 ```
+
+### Accedi alla Dashboard
+
+Apri nel browser: `http://<IP_DROPLET>:8080`
+
+Esempio: `http://167.99.123.45:8080`
 
 🎉 **Il bot è attivo!**
 
@@ -177,97 +175,88 @@ docker compose logs -f
 ```bash
 cd /opt/ai-scalping
 
-# Stato del bot
+# Stato
 docker compose ps
 
-# Log in tempo reale
-docker compose logs -f
+# Log bot
+docker compose logs -f trading-bot
 
-# Ultime 100 righe di log
-docker compose logs --tail 100
+# Log dashboard
+docker compose logs -f dashboard
 
-# Riavvia il bot
+# Riavvia tutto
 docker compose restart
 
-# Ferma il bot
+# Ferma tutto
 docker compose down
 
-# Aggiorna il bot (pull nuova versione da GitHub)
-git pull
-docker compose up -d --build
+# Aggiorna (nuova versione da GitHub)
+./deploy.sh update
 ```
 
 ### Backup Database
 
 ```bash
-# Dal server: copia il DB in locale
-scp root@<IP>:/opt/ai-scalping/trading_bot.db ./backup_$(date +%Y%m%d).db
-
-# Esempio:
-scp root@167.99.123.45:/opt/ai-scalping/trading_bot.db ./backup.db
+# Dal TUO PC: copia il DB in locale
+scp root@<IP>:/opt/ai-scalping/data/trading_bot.db ./backup_$(date +%Y%m%d).db
 ```
 
 ### Ispezionare il Database
 
 ```bash
 # Sul server
-sqlite3 /opt/ai-scalping/trading_bot.db
+sqlite3 /opt/ai-scalping/data/trading_bot.db
 
 # Query utili:
-.tables                           # Mostra tabelle
-SELECT * FROM trades;             # Tutti i trade
-SELECT * FROM strategic_signals;  # Tutti i segnali
-SELECT * FROM logs ORDER BY id DESC LIMIT 20;  # Ultimi log
-.quit                             # Esci
+.tables
+SELECT * FROM trades;
+SELECT * FROM strategic_signals ORDER BY id DESC LIMIT 5;
+SELECT * FROM bot_status;
+.quit
 ```
 
 ---
 
 ## Troubleshooting
 
-### Il bot non parte
+### Bot non parte
 
 ```bash
-# Controlla i log per errori
-docker compose logs --tail 50
+# Controlla i log
+docker compose logs --tail 50 trading-bot
 
-# Verifica che .env esista e abbia le chiavi
+# Verifica .env
 cat /opt/ai-scalping/.env
 ```
 
-### Errore "Permission denied" su SSH
+### Dashboard non raggiungibile
 
 ```bash
-# Sul TUO PC, verifica i permessi della chiave
+# Verifica che sia running
+docker compose ps
+
+# Controlla log
+docker compose logs dashboard
+
+# Firewall (DigitalOcean)
+# Assicurati che porta 8080 sia aperta
+```
+
+### "Permission denied" su SSH
+
+```bash
+# Sul TUO PC
 chmod 600 ~/.ssh/id_ed25519
 chmod 644 ~/.ssh/id_ed25519.pub
 ```
 
-### Aggiungere SSH key da un altro PC
-
-Dal PC che ha già accesso:
+### Reset database
 
 ```bash
-ssh root@<IP>
-nano ~/.ssh/authorized_keys
-# Aggiungi la nuova chiave pubblica su una nuova riga
-# Salva: Ctrl+X, Y, Enter
-```
-
-### Il bot si ferma dopo un po'
-
-Verifica che Docker sia configurato per il restart automatico:
-
-```bash
-docker compose ps
-# Deve mostrare "restart: unless-stopped"
-```
-
-### Vedere quanto spazio disco usi
-
-```bash
-df -h           # Spazio disco totale
-du -sh /opt/*   # Spazio per cartella
+cd /opt/ai-scalping
+docker compose down
+rm -f data/trading_bot.db
+docker compose up -d
 ```
 
 ---
@@ -275,41 +264,45 @@ du -sh /opt/*   # Spazio per cartella
 ## Architettura
 
 ```
-DigitalOcean Droplet ($6/mo)
-├── Docker
-│   └── ai-scalping-bot (container)
-│       ├── Python 3.11
-│       ├── src/main.py (entry point)
-│       └── trading_bot.db (SQLite)
+DigitalOcean Droplet ($8/mo)
+├── Docker Compose
+│   ├── ai-scalping-bot (container)
+│   │   ├── Python 3.11 + main.py
+│   │   └── Strategy + Execution loops
+│   │
+│   └── ai-scalping-dashboard (container)
+│       ├── FastAPI + Uvicorn
+│       └── Porta 8080
 │
 ├── /opt/ai-scalping/
-│   ├── .env (API keys - NON committato)
+│   ├── .env (API keys)
+│   ├── data/trading_bot.db (SQLite)
 │   ├── docker-compose.yml
-│   ├── Dockerfile
 │   └── src/
 │
 └── Connessioni esterne:
-    ├── Alpaca API (market data + orders)
-    └── Anthropic API (Claude AI)
+    ├── Alpaca API (data + orders)
+    └── Anthropic API (Claude)
 ```
 
 ---
 
-## Costi Dettagliati
+## Costi
 
 | Servizio | Costo | Note |
 |----------|-------|------|
-| DigitalOcean Droplet | $6/mese | Basic 1GB RAM |
-| DigitalOcean Backup | +$1.20/mese | Opzionale ma consigliato |
-| Claude API (Haiku) | ~$0.25/1M input tokens | Molto economico |
-| Alpaca | Gratis | Paper trading illimitato |
+| DigitalOcean Droplet | $8/mese | Basic 1GB RAM |
+| DigitalOcean Backup | +$1.60/mese | Opzionale |
+| Claude API (Haiku) | ~$0.25/1M tokens | Molto economico |
+| Alpaca | Gratis | Paper trading |
 
-**Stima mensile**: $7-12 (dipende da quante chiamate API fai)
+**Stima mensile**: $8-12
 
 ---
 
-## Contatti e Supporto
+## Link Utili
 
 - Repository: https://github.com/NabilTouri/ai-scalping
+- Dashboard: `http://<IP>:8080`
 - Alpaca Docs: https://docs.alpaca.markets
 - Anthropic Docs: https://docs.anthropic.com
