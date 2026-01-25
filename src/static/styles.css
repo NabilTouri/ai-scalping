@@ -60,12 +60,21 @@ header h1 {
     align-items: center;
     gap: 8px;
     padding: 8px 16px;
-    background: rgba(0, 210, 106, 0.1);
-    border: 1px solid var(--accent-green);
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 500;
+}
+
+.status-badge.live {
+    background: rgba(0, 210, 106, 0.1);
+    border: 1px solid var(--accent-green);
     color: var(--accent-green);
+}
+
+.status-badge.offline {
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid var(--accent-red);
+    color: var(--accent-red);
 }
 
 .pulse {
@@ -77,8 +86,17 @@ header h1 {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.2); }
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
 }
 
 /* Stats Grid */
@@ -116,8 +134,13 @@ header h1 {
     font-weight: 700;
 }
 
-.stat-value.positive { color: var(--accent-green); }
-.stat-value.negative { color: var(--accent-red); }
+.stat-value.positive {
+    color: var(--accent-green);
+}
+
+.stat-value.negative {
+    color: var(--accent-red);
+}
 
 /* Panels */
 .panel {
@@ -146,7 +169,8 @@ table {
     border-collapse: collapse;
 }
 
-th, td {
+th,
+td {
     padding: 12px 16px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
@@ -169,10 +193,21 @@ tr:hover td {
     background: rgba(255, 255, 255, 0.02);
 }
 
-.positive { color: var(--accent-green); }
-.negative { color: var(--accent-red); }
-.buy { color: var(--accent-green); }
-.sell { color: var(--accent-red); }
+.positive {
+    color: var(--accent-green);
+}
+
+.negative {
+    color: var(--accent-red);
+}
+
+.buy {
+    color: var(--accent-green);
+}
+
+.sell {
+    color: var(--accent-red);
+}
 
 .status-badge.open {
     display: inline-block;
@@ -272,9 +307,20 @@ tr:hover td {
     border-radius: 8px;
 }
 
-.sentiment.bullish { background: rgba(0, 210, 106, 0.1); color: var(--accent-green); }
-.sentiment.bearish { background: rgba(255, 71, 87, 0.1); color: var(--accent-red); }
-.sentiment.neutral { background: rgba(160, 160, 176, 0.1); color: var(--text-secondary); }
+.sentiment.bullish {
+    background: rgba(0, 210, 106, 0.1);
+    color: var(--accent-green);
+}
+
+.sentiment.bearish {
+    background: rgba(255, 71, 87, 0.1);
+    color: var(--accent-red);
+}
+
+.sentiment.neutral {
+    background: rgba(160, 160, 176, 0.1);
+    color: var(--text-secondary);
+}
 
 .confidence {
     font-size: 0.75rem;
@@ -371,9 +417,17 @@ tr:hover td {
     font-size: 0.75rem;
 }
 
-.log-entry.info .log-level { color: var(--accent-blue); }
-.log-entry.error .log-level { color: var(--accent-red); }
-.log-entry.warning .log-level { color: var(--accent-yellow); }
+.log-entry.info .log-level {
+    color: var(--accent-blue);
+}
+
+.log-entry.error .log-level {
+    color: var(--accent-red);
+}
+
+.log-entry.warning .log-level {
+    color: var(--accent-yellow);
+}
 
 .log-message {
     color: var(--text-secondary);
@@ -415,19 +469,19 @@ footer {
     .container {
         padding: 16px;
     }
-    
+
     header h1 {
         font-size: 1.4rem;
     }
-    
+
     .stat-card {
         padding: 16px;
     }
-    
+
     .stat-value {
         font-size: 1.4rem;
     }
-    
+
     .signals-grid {
         grid-template-columns: 1fr;
     }

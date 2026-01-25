@@ -294,6 +294,26 @@
             }
         }
 
+        // Load bot status (heartbeat)
+        async function loadBotStatus() {
+            try {
+                const res = await fetch('/api/health');
+                const data = await res.json();
+                const statusEl = document.getElementById('status');
+
+                if (data.bot_active) {
+                    statusEl.innerHTML = '<span class="pulse"></span><span>Live</span>';
+                    statusEl.className = 'status-badge live';
+                } else {
+                    statusEl.innerHTML = '<span>Offline</span>';
+                    statusEl.className = 'status-badge offline';
+                }
+            } catch (e) {
+                const statusEl = document.getElementById('status');
+                statusEl.innerHTML = '<span>Error</span>';
+                statusEl.className = 'status-badge offline';
+            }
+        }
 
         // Load all data
         async function loadAll() {
@@ -302,7 +322,8 @@
                 loadPositions(),
                 loadSignals(),
                 loadTrades(),
-                loadLogs()
+                loadLogs(),
+                loadBotStatus()
             ]);
             document.getElementById('last-update').textContent = new Date().toLocaleTimeString('it-IT');
         }

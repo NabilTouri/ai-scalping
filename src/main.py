@@ -82,6 +82,24 @@ def save_signal(session, agent_name, symbol, decision, current_price=None):
         strategy_logger.error(f"Failed to save signal: {e}")
 
 
+def update_heartbeat():
+    """Update heartbeat timestamp to indicate bot is alive."""
+    from src.database import BotStatus
+    db = SessionLocal()
+    try:
+        status = db.query(BotStatus).filter(BotStatus.bot_name == "MAIN").first()
+        if status:
+            status.last_heartbeat = datetime.utcnow()
+        else:
+            status = BotStatus(bot_name="MAIN", last_heartbeat=datetime.utcnow())
+            db.add(status)
+        db.commit()
+    except Exception:
+        pass  # Never crash for heartbeat
+    finally:
+        db.close()
+
+
 def execution_loop(execution_engine):
     """
     Runs frequently (e.g. every 10s).
@@ -90,6 +108,7 @@ def execution_loop(execution_engine):
     logger.info("Execution Loop Started")
     while True:
         execution_engine.process_signals()
+        update_heartbeat()  # Send heartbeat
         time.sleep(10)
 
 

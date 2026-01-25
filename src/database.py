@@ -61,6 +61,15 @@ class Log(Base):
     symbol = Column(String, nullable=True)  # BTC/USD, ETH/USD, etc.
     message = Column(Text)
 
+class BotStatus(Base):
+    """Heartbeat table - bot updates this every 10 seconds."""
+    __tablename__ = 'bot_status'
+    
+    id = Column(Integer, primary_key=True)
+    bot_name = Column(String, default="MAIN")
+    last_heartbeat = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default="RUNNING")  # RUNNING, STOPPED
+
 # Database Initialization
 engine = create_engine(Config.DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)

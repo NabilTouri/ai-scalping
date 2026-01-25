@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import os
 
 # Import database from shared module (uses same config)
-from .database import SessionLocal, Trade, StrategicSignal, Log, init_db
+from .database import SessionLocal, Trade, StrategicSignal, Log, BotStatus, init_db
 
 # Initialize database tables on startup
 init_db()
@@ -193,8 +193,24 @@ async def get_logs(
 
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+    """Health check endpoint - verifies bot is running via heartbeat"""
+    db = SessionLocal()
+    try:
+        status = db.query(BotStatus).filter(BotStatus.bot_name == "MAIN").first()
+        
+        if status and status.last_heartbeat:
+            seconds_since_heartbeat = (datetime.utcnow() - status.last_heartbeat).total_seconds()
+            bot_active = seconds_since_heartbeat < 30
+        else:
+            bot_active = False
+        
+        return {
+            "status": "ok",
+            "bot_active": bot_active,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":
