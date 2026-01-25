@@ -294,8 +294,35 @@ tr:hover td {
 }
 
 /* Logs */
+.logs-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.logs-filters select {
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.logs-filters select:hover {
+    border-color: var(--accent-blue);
+}
+
+.logs-filters select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
 .logs-container {
-    max-height: 300px;
+    max-height: 400px;
     overflow-y: auto;
 }
 
@@ -305,6 +332,7 @@ tr:hover td {
     padding: 10px 0;
     border-bottom: 1px solid var(--border-color);
     font-size: 0.85rem;
+    align-items: flex-start;
 }
 
 .log-entry:last-child {
@@ -314,13 +342,33 @@ tr:hover td {
 .log-time {
     color: var(--text-muted);
     flex-shrink: 0;
-    width: 120px;
+    width: 100px;
+    font-size: 0.75rem;
+}
+
+.log-source {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(157, 78, 221, 0.15);
+    color: var(--accent-purple);
+    flex-shrink: 0;
+}
+
+.log-symbol {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 180, 216, 0.15);
+    color: var(--accent-blue);
+    flex-shrink: 0;
 }
 
 .log-level {
     font-weight: 600;
     flex-shrink: 0;
-    width: 60px;
+    width: 55px;
+    font-size: 0.75rem;
 }
 
 .log-entry.info .log-level { color: var(--accent-blue); }

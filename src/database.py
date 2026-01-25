@@ -57,7 +57,8 @@ class Log(Base):
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     level = Column(String, default="INFO")
-    source = Column(String) # e.g., "EXECUTION_ENGINE", "GEMINI_AGENT"
+    source = Column(String)  # BOT, EXECUTION, STRATEGY
+    symbol = Column(String, nullable=True)  # BTC/USD, ETH/USD, etc.
     message = Column(Text)
 
 # Database Initialization

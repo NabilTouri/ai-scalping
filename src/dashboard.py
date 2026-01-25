@@ -153,17 +153,33 @@ async def get_signals(limit: int = 20):
 
 
 @app.get("/api/logs")
-async def get_logs(limit: int = 50):
-    """Get recent logs"""
+async def get_logs(
+    limit: int = 50,
+    source: str = None,  # BOT, EXECUTION, STRATEGY
+    symbol: str = None,  # BTC/USD, ETH/USD
+    level: str = None,   # INFO, WARNING, ERROR
+):
+    """Get recent logs with optional filters"""
     db = SessionLocal()
     try:
-        logs = db.query(Log).order_by(desc(Log.timestamp)).limit(limit).all()
+        query = db.query(Log)
+        
+        # Apply filters
+        if source:
+            query = query.filter(Log.source == source)
+        if symbol:
+            query = query.filter(Log.symbol == symbol)
+        if level:
+            query = query.filter(Log.level == level)
+        
+        logs = query.order_by(desc(Log.timestamp)).limit(limit).all()
         return {
             "logs": [
                 {
                     "id": l.id,
                     "level": l.level,
                     "source": l.source,
+                    "symbol": l.symbol,
                     "message": l.message,
                     "timestamp": l.timestamp.isoformat() if l.timestamp else None
                 }
@@ -172,6 +188,7 @@ async def get_logs(limit: int = 50):
         }
     finally:
         db.close()
+
 
 
 @app.get("/api/health")

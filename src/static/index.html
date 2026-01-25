@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="/static/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -52,7 +54,9 @@
                         </tr>
                     </thead>
                     <tbody id="positions-body">
-                        <tr><td colspan="5" class="empty">No open positions</td></tr>
+                        <tr>
+                            <td colspan="5" class="empty">No open positions</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -84,7 +88,9 @@
                         </tr>
                     </thead>
                     <tbody id="trades-body">
-                        <tr><td colspan="8" class="empty">Loading trades...</td></tr>
+                        <tr>
+                            <td colspan="8" class="empty">Loading trades...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -93,10 +99,30 @@
         <!-- Logs -->
         <section class="panel">
             <h2>📋 Recent Logs</h2>
+            <div class="logs-filters">
+                <select id="log-source-filter" onchange="loadLogs()">
+                    <option value="">All Sources</option>
+                    <option value="BOT">BOT</option>
+                    <option value="EXECUTION">EXECUTION</option>
+                    <option value="STRATEGY">STRATEGY</option>
+                </select>
+                <select id="log-symbol-filter" onchange="loadLogs()">
+                    <option value="">All Assets</option>
+                    <option value="BTC/USD">BTC/USD</option>
+                    <option value="ETH/USD">ETH/USD</option>
+                </select>
+                <select id="log-level-filter" onchange="loadLogs()">
+                    <option value="">All Levels</option>
+                    <option value="INFO">INFO</option>
+                    <option value="WARNING">WARNING</option>
+                    <option value="ERROR">ERROR</option>
+                </select>
+            </div>
             <div class="logs-container" id="logs-container">
                 <div class="empty">Loading logs...</div>
             </div>
         </section>
+
 
         <footer>
             <span>Last updated: <span id="last-update">-</span></span>
@@ -117,7 +143,7 @@
         function formatDate(isoString) {
             if (!isoString) return '-';
             const date = new Date(isoString);
-            return date.toLocaleString('it-IT', { 
+            return date.toLocaleString('it-IT', {
                 month: 'short', day: 'numeric',
                 hour: '2-digit', minute: '2-digit'
             });
@@ -128,11 +154,11 @@
             try {
                 const res = await fetch('/api/stats');
                 const data = await res.json();
-                
+
                 const pnlEl = document.getElementById('total-pnl');
                 pnlEl.textContent = formatCurrency(data.total_pnl);
                 pnlEl.className = `stat-value ${data.total_pnl >= 0 ? 'positive' : 'negative'}`;
-                
+
                 document.getElementById('open-positions').textContent = data.open_positions;
                 document.getElementById('win-rate').textContent = `${data.win_rate}%`;
                 document.getElementById('total-trades').textContent = data.total_trades;
@@ -147,12 +173,12 @@
                 const res = await fetch('/api/positions');
                 const data = await res.json();
                 const tbody = document.getElementById('positions-body');
-                
+
                 if (data.positions.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="empty">No open positions</td></tr>';
                     return;
                 }
-                
+
                 tbody.innerHTML = data.positions.map(p => `
                     <tr>
                         <td><strong>${p.symbol}</strong></td>
@@ -175,12 +201,12 @@
                 const res = await fetch('/api/signals?limit=8');
                 const data = await res.json();
                 const container = document.getElementById('signals-container');
-                
+
                 if (data.signals.length === 0) {
                     container.innerHTML = '<div class="empty">No signals yet</div>';
                     return;
                 }
-                
+
                 container.innerHTML = data.signals.map(s => `
                     <div class="signal-card ${s.is_active ? 'active' : ''} ${s.action.toLowerCase()}">
                         <div class="signal-header">
@@ -206,12 +232,12 @@
                 const res = await fetch('/api/trades?limit=10');
                 const data = await res.json();
                 const tbody = document.getElementById('trades-body');
-                
+
                 if (data.trades.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="8" class="empty">No trades yet</td></tr>';
                     return;
                 }
-                
+
                 tbody.innerHTML = data.trades.map(t => `
                     <tr>
                         <td>${formatDate(t.entry_time)}</td>
@@ -234,18 +260,31 @@
         // Load logs
         async function loadLogs() {
             try {
-                const res = await fetch('/api/logs?limit=20');
+                // Get filter values
+                const source = document.getElementById('log-source-filter').value;
+                const symbol = document.getElementById('log-symbol-filter').value;
+                const level = document.getElementById('log-level-filter').value;
+
+                // Build query string
+                let url = '/api/logs?limit=50';
+                if (source) url += `&source=${source}`;
+                if (symbol) url += `&symbol=${encodeURIComponent(symbol)}`;
+                if (level) url += `&level=${level}`;
+
+                const res = await fetch(url);
                 const data = await res.json();
                 const container = document.getElementById('logs-container');
-                
+
                 if (data.logs.length === 0) {
                     container.innerHTML = '<div class="empty">No logs yet</div>';
                     return;
                 }
-                
+
                 container.innerHTML = data.logs.map(l => `
                     <div class="log-entry ${l.level.toLowerCase()}">
                         <span class="log-time">${formatDate(l.timestamp)}</span>
+                        <span class="log-source">${l.source}</span>
+                        ${l.symbol ? `<span class="log-symbol">${l.symbol}</span>` : ''}
                         <span class="log-level">${l.level}</span>
                         <span class="log-message">${l.message}</span>
                     </div>
@@ -254,6 +293,7 @@
                 console.error('Failed to load logs:', e);
             }
         }
+
 
         // Load all data
         async function loadAll() {
@@ -269,9 +309,10 @@
 
         // Initial load
         loadAll();
-        
+
         // Auto-refresh every 30 seconds
         setInterval(loadAll, 30000);
     </script>
 </body>
+
 </html>
