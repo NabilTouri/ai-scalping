@@ -32,6 +32,7 @@ class ExecutionEngine:
     def _evaluate_signal(self, signal: StrategicSignal):
         # Skip if confidence is too low
         if signal.confidence is not None and signal.confidence < Config.MIN_CONFIDENCE:
+            logger.debug(f"Skipped {signal.action} {signal.target_symbol} - confidence {signal.confidence:.0%} < {Config.MIN_CONFIDENCE:.0%}")
             return
         
         # Check if we already have an open trade for this signal
@@ -58,7 +59,11 @@ class ExecutionEngine:
                     above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
                     if below_max and above_min:
                         self._execute_entry(signal, current_price, "buy")
+                    else:
+                        logger.info(f"Skipped BUY {signal.target_symbol} - price ${current_price:.2f} out of range [${signal.entry_price_min or 'N/A'}-${signal.entry_price_max or 'N/A'}]")
                 # If already long, do nothing
+                else:
+                    logger.debug(f"Skipped BUY {signal.target_symbol} - already in LONG position")
             
             elif signal.action == "SELL":
                 # If we have a long position, close it first
@@ -70,7 +75,11 @@ class ExecutionEngine:
                     above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
                     if below_max and above_min:
                         self._execute_entry(signal, current_price, "sell")
+                    else:
+                        logger.info(f"Skipped SELL {signal.target_symbol} - price ${current_price:.2f} out of range [${signal.entry_price_min or 'N/A'}-${signal.entry_price_max or 'N/A'}]")
                 # If already short, do nothing
+                else:
+                    logger.debug(f"Skipped SELL {signal.target_symbol} - already in SHORT position")
 
         # LOGIC: EXIT (Stop Loss / Take Profit for existing trade)
         else:
