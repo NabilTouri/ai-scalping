@@ -9,6 +9,8 @@ from sqlalchemy import desc
 from datetime import datetime, timedelta
 import os
 
+from .config import Config
+
 # Import database from shared module (uses same config)
 from .database import SessionLocal, Trade, StrategicSignal, Log, BotStatus, init_db
 
@@ -200,7 +202,7 @@ async def health_check():
         
         if status and status.last_heartbeat:
             seconds_since_heartbeat = (datetime.utcnow() - status.last_heartbeat).total_seconds()
-            bot_active = seconds_since_heartbeat < 30
+            bot_active = seconds_since_heartbeat < Config.HEARTBEAT_TIMEOUT
         else:
             bot_active = False
         

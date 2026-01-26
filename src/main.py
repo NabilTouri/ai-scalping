@@ -39,7 +39,7 @@ def strategy_loop(market, SessionFactory):
                 c_decision = claude.analyze(symbol, df)
                 save_signal(db_session, "CLAUDE", symbol, c_decision, current_price)
                 
-                time.sleep(5)
+                time.sleep(Config.STRATEGY_SYMBOL_DELAY)
             
             db_session.close()
                 
@@ -109,7 +109,7 @@ def execution_loop(execution_engine):
     while True:
         execution_engine.process_signals()
         update_heartbeat()  # Send heartbeat
-        time.sleep(10)
+        time.sleep(Config.EXECUTION_LOOP_INTERVAL)
 
 
 def invalidate_stale_signals():

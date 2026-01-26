@@ -36,14 +36,16 @@ class MarketDataManager:
         raise Exception(f"No price data found for {symbol}")
 
 
-    def get_historical_data(self, symbol, timeframe_str="15Min", limit=100):
+    def get_historical_data(self, symbol, timeframe_str="15Min", limit=None):
         """Fetches historical OHLCV data for AI analysis.
         
         Args:
             symbol: Trading pair (e.g., "BTC/USD")
             timeframe_str: Timeframe string from config (e.g., "15Min", "1Hour")
-            limit: Number of bars to fetch (100 at 15min = 25 hours of data)
+            limit: Number of bars to fetch (default from Config.HISTORICAL_BARS_LIMIT)
         """
+        if limit is None:
+            limit = Config.HISTORICAL_BARS_LIMIT
         # Parse timeframe string to TimeFrame object
         tf = self._parse_timeframe(timeframe_str)
         

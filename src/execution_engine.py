@@ -83,11 +83,10 @@ class ExecutionEngine:
         equity = float(account.equity)
         buying_power = float(account.buying_power)
         
-        MIN_TRADE_PERCENT = 0.05
-        min_trade_value = equity * MIN_TRADE_PERCENT
+        min_trade_value = equity * Config.MIN_TRADE_PERCENT
         
         if buying_power < min_trade_value:
-            logger.warning(f"Insufficient buying power: ${buying_power:.2f} < {MIN_TRADE_PERCENT*100}% of equity")
+            logger.warning(f"Insufficient buying power: ${buying_power:.2f} < {Config.MIN_TRADE_PERCENT*100}% of equity")
             signal.is_active = False
             self.db.commit()
             return

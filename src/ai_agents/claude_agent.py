@@ -8,7 +8,7 @@ class ClaudeAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="CLAUDE")
         self.client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
-        self.model = "claude-3-haiku-20240307" # Cost effective and fast
+        self.model = Config.CLAUDE_MODEL
 
     def analyze(self, symbol: str, market_data_df: pd.DataFrame) -> dict:
         recent_data = market_data_df.tail(20).to_string()
@@ -25,7 +25,7 @@ class ClaudeAgent(BaseAgent):
         try:
             message = self.client.messages.create(
                 model=self.model,
-                max_tokens=1000,
+                max_tokens=Config.CLAUDE_MAX_TOKENS,
                 system=SYSTEM_PROMPT,
                 messages=[
                     {"role": "user", "content": user_message}
