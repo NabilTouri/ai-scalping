@@ -100,15 +100,47 @@ def update_heartbeat():
         db.close()
 
 
-def execution_loop(execution_engine):
+def execution_loop(execution_engine, market):
     """
     Runs frequently (e.g. every 10s).
     Checks market price vs active signals and executes.
+    Also monitors daily loss and halts trading if exceeded.
     """
     logger.info("Execution Loop Started")
+    starting_equity = None
+    trading_halted = False
+    
     while True:
-        execution_engine.process_signals()
-        update_heartbeat()  # Send heartbeat
+        # Check daily loss limit
+        try:
+            account = market.get_account("CLAUDE")
+            current_equity = float(account.equity)
+            
+            # Set starting equity on first run or at midnight reset
+            if starting_equity is None:
+                starting_equity = current_equity
+                logger.info(f"Starting equity: ${starting_equity:.2f}")
+            
+            # Calculate daily loss
+            daily_pnl_pct = (current_equity - starting_equity) / starting_equity
+            
+            if daily_pnl_pct <= -Config.MAX_DAILY_LOSS_PERCENT:
+                if not trading_halted:
+                    logger.warning(f"TRADING HALTED - Daily loss {daily_pnl_pct:.2%} exceeds limit {-Config.MAX_DAILY_LOSS_PERCENT:.2%}")
+                    trading_halted = True
+            else:
+                if trading_halted:
+                    logger.info("Trading resumed - loss within acceptable range")
+                trading_halted = False
+                
+        except Exception as e:
+            logger.error(f"Error checking daily loss: {e}")
+        
+        # Only process signals if trading is allowed
+        if not trading_halted:
+            execution_engine.process_signals()
+        
+        update_heartbeat()
         time.sleep(Config.EXECUTION_LOOP_INTERVAL)
 
 
@@ -213,7 +245,7 @@ def main():
     strategy_thread = threading.Thread(target=strategy_loop, args=(market, SessionLocal), daemon=True)
     strategy_thread.start()
     
-    execution_loop(execution)
+    execution_loop(execution, market)
 
 
 if __name__ == "__main__":

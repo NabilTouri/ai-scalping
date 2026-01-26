@@ -2,6 +2,7 @@ import anthropic
 from ..config import Config
 from .base_agent import BaseAgent
 from .prompts import SYSTEM_PROMPT, parse_ai_response
+from ..logger import strategy_logger as logger
 import pandas as pd
 
 class ClaudeAgent(BaseAgent):
@@ -34,5 +35,5 @@ class ClaudeAgent(BaseAgent):
             response_text = message.content[0].text
             return parse_ai_response(response_text)
         except Exception as e:
-            print(f"Claude API Error: {e}")
+            logger.error(f"Claude API Error: {e}")
             return {"action": "HOLD", "reasoning": f"API Error: {e}"}

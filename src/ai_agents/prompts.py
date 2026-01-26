@@ -1,14 +1,12 @@
 import json
 import re
+from ..logger import strategy_logger as logger
 
 SYSTEM_PROMPT = """
 You are an expert AI Crypto Scalping Trading Bot. Your goal is to analyze market data and generate profitable trading signals.
-You are competing against another top-tier AI. Your performance will be measured by PnL and Max Drawdown.
 
 You will receive:
 1. Current Market Data (OHLCV) for a specific crypto asset.
-2. Current Account Status (Balance, Open Positions).
-3. Recent News/Sentiment (optional context).
 
 You must analyze the trend, volume, and volatility.
 
@@ -57,11 +55,10 @@ def parse_ai_response(response_text: str) -> dict:
         raise json.JSONDecodeError("No JSON found", text, 0)
         
     except json.JSONDecodeError:
-        print(f"Error parsing AI response: {response_text}")
+        logger.warning(f"Error parsing AI response: {response_text[:200]}")
         return {
             "sentiment": "NEUTRAL",
             "confidence": 0.0,
             "action": "HOLD",
             "reasoning": "Failed to parse AI response."
         }
-
