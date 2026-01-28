@@ -69,14 +69,10 @@ class ExecutionEngine:
                 # If we have a long position, close it first
                 if position_side == "long":
                     self._close_position_for_symbol(signal, current_price)
-                # If no position, open a short
+                # If no position, we would normally open a short, but Crypto shorting is not supported on Alpaca Paper
                 elif position_side is None:
-                    below_max = (current_price <= signal.entry_price_max) if signal.entry_price_max else True
-                    above_min = (current_price >= signal.entry_price_min) if signal.entry_price_min else True
-                    if below_max and above_min:
-                        self._execute_entry(signal, current_price, "sell")
-                    else:
-                        logger.info(f"Skipped SELL {signal.target_symbol} - price ${current_price:.2f} out of range [${signal.entry_price_min or 'N/A'}-${signal.entry_price_max or 'N/A'}]")
+                    logger.info(f"Skipped SELL {signal.target_symbol} - No existing position to close (Shorting disabled/not supported for Crypto)")
+                    return
                 # If already short, do nothing
                 else:
                     logger.debug(f"Skipped SELL {signal.target_symbol} - already in SHORT position")
