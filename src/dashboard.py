@@ -15,7 +15,7 @@ from .config import Config
 from .database import SessionLocal, Trade, StrategicSignal, Log, BotStatus, init_db
 
 # Initialize database tables on startup
-init_db()
+# init_db()  # Handled by main bot
 
 # Alpaca client for live positions
 try:
