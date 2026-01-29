@@ -69,7 +69,4 @@ class Config:
             raise ValueError("Anthropic API Key missing in .env")
 
 # Validation check on import
-try:
-    Config.validate()
-except ValueError as e:
-    print(f"Configuration Error: {e}")
+

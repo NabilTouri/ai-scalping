@@ -72,6 +72,8 @@ class ExecutionEngine:
                 # If no position, we would normally open a short, but Crypto shorting is not supported on Alpaca Paper
                 elif position_side is None:
                     logger.info(f"Skipped SELL {signal.target_symbol} - No existing position to close (Shorting disabled/not supported for Crypto)")
+                    signal.is_active = False
+                    self.db.commit()
                     return
                 # If already short, do nothing
                 else:
@@ -211,3 +213,79 @@ class ExecutionEngine:
                 logger.info(f"Closed {trade.symbol} at {price}. PnL: {pnl:.2f}. Reason: {reason}")
         except Exception as e:
             logger.error(f"Failed to update trade in DB: {e}")
+
+    def invalidate_stale_signals(self):
+        """Deactivate all active signals from previous bot sessions."""
+        try:
+            stale_count = self.db.query(StrategicSignal).filter(StrategicSignal.is_active == True).update({"is_active": False})
+            self.db.commit()
+            if stale_count > 0:
+                logger.info(f"Invalidated {stale_count} stale signal(s) from previous session")
+        except Exception as e:
+            logger.error(f"Error invalidating stale signals: {e}")
+
+    def sync_existing_positions(self):
+        """
+        Sync database with real Alpaca positions.
+        Alpaca is the source of truth - DB is just for logging.
+        """
+        try:
+            real_positions = {}
+            try:
+                positions = self.market.get_open_positions("CLAUDE")
+                for p in positions:
+                    raw_symbol = p.symbol
+                    if raw_symbol.endswith("USD"):
+                        symbol = raw_symbol[:-3] + "/USD"
+                    else:
+                        symbol = raw_symbol
+                    real_positions[symbol] = {
+                        "qty": float(p.qty),
+                        "entry_price": float(p.avg_entry_price),
+                        "current_price": float(p.current_price)
+                    }
+                logger.info(f"Found {len(real_positions)} real position(s) on Alpaca")
+            except Exception as e:
+                logger.warning(f"Could not fetch Alpaca positions: {e}")
+                return
+            
+            open_trades = self.db.query(Trade).filter(Trade.status == "OPEN").all()
+            closed_count = 0
+            for trade in open_trades:
+                if trade.symbol not in real_positions:
+                    trade.status = "CLOSED"
+                    trade.pnl = 0.0
+                    closed_count += 1
+            
+            if closed_count > 0:
+                self.db.commit()
+                logger.info(f"Closed {closed_count} stale trade(s) not found on Alpaca")
+            
+            for symbol, pos_data in real_positions.items():
+                existing = self.db.query(Trade).filter(
+                    Trade.symbol == symbol,
+                    Trade.status == "OPEN"
+                ).first()
+                
+                if existing:
+                    existing.qty = pos_data["qty"]
+                    existing.entry_price = pos_data["entry_price"]
+                    logger.info(f"Updated position: {symbol} (qty={pos_data['qty']:.4f}, entry=${pos_data['entry_price']:.2f})")
+                else:
+                    new_trade = Trade(
+                        agent_name="CLAUDE",
+                        symbol=symbol,
+                        side="buy",
+                        qty=pos_data["qty"],
+                        entry_price=pos_data["entry_price"],
+                        status="OPEN",
+                        strategy_signal_id=None
+                    )
+                    self.db.add(new_trade)
+                    logger.info(f"Created position: {symbol} (qty={pos_data['qty']:.4f}, entry=${pos_data['entry_price']:.2f})")
+            
+            self.db.commit()
+            
+        except Exception as e:
+            logger.error(f"Error syncing positions: {e}")
+
