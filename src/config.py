@@ -32,7 +32,7 @@ class Config:
     # ===================
     TIMEFRAME = "15Min"                        # Data granularity: 1Min, 5Min, 15Min, 30Min, 1Hour
     HISTORICAL_BARS_LIMIT = 100                # Number of bars to fetch for AI analysis
-    STRATEGY_UPDATE_INTERVAL = 30 * 60         # Seconds between AI analysis (30 minutes)
+    STRATEGY_UPDATE_INTERVAL = 15 * 60         # Seconds between AI analysis (Should match TIMEFRAME)
     STRATEGY_SYMBOL_DELAY = 5                  # Seconds delay between analyzing each symbol
 
     # ===================
