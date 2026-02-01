@@ -70,7 +70,7 @@ def execution_loop(execution_engine, market):
 
 
 def main():
-    logger.info("Starting AI Scalping Bot...")
+    logger.info("Starting AI Trading Bot...")
     
     # 1. Validate Config
     try:

@@ -1,4 +1,4 @@
-# AI Scalping Bot
+# AI Trading Bot
 
 Claude-powered crypto scalping bot for Alpaca **paper trading**. Generates trading signals with Claude AI, executes through Alpaca, and provides a real-time web dashboard.
 

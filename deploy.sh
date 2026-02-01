@@ -59,7 +59,14 @@ if [ -d ".git" ]; then
     git pull
 else
     echo "📥 Cloning repository..."
-    git clone https://github.com/NabilTouri/ai-scalping.git .
+    git clone https://github.com/NabilTouri/ai-trading.git .
+fi
+
+# Check if running
+if [ "$(docker ps -q -f name=ai-trading-bot)" ]; then
+    echo "Bot is running."
+else
+    echo "Bot is NOT running!"
 fi
 
 # Check for .env file

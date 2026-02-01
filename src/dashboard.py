@@ -1,5 +1,5 @@
 """
-Dashboard Web per AI Scalping Bot
+Dashboard Web per AI Trading Bot
 FastAPI application per monitorare il bot in tempo reale
 """
 from fastapi import FastAPI
@@ -25,7 +25,7 @@ except Exception as e:
     print(f"Warning: Could not initialize market data: {e}")
     market = None
 
-app = FastAPI(title="AI Scalping Dashboard")
+app = FastAPI(title="AI Trading Dashboard")
 
 # Mount static files
 static_path = os.path.join(os.path.dirname(__file__), "static")
